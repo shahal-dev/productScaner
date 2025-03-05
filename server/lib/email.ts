@@ -39,26 +39,17 @@ export async function sendPasswordResetEmail(email: string, token: string, usern
   
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
     // Using real SMTP server
-    try {
-      transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-        // Adding debug option to see detailed logs
-        debug: true,
-        logger: true
-      });
-      
-      console.log("Using configured SMTP server for emails:", process.env.SMTP_HOST);
-      console.log("SMTP user:", process.env.SMTP_USER);
-    } catch (error) {
-      console.error("Error setting up SMTP transport:", error);
-      throw new Error(`Failed to set up email transport: ${error.message}`);
-    }
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+    
+    console.log("Using configured SMTP server for emails");
   } else {
     // Fallback to ethereal for testing
     const testAccount = await nodemailer.createTestAccount();
@@ -76,11 +67,8 @@ export async function sendPasswordResetEmail(email: string, token: string, usern
     console.log("Email preview URL will be shown in the console");
   }
 
-  // The reset link - make sure we use the client URL for React app
-  // Client typically runs on port 3000
-  const clientUrl = process.env.CLIENT_URL || process.env.APP_URL || 'http://localhost:3000';
-  const resetLink = `${clientUrl}/password-reset?token=${token}`;
-  console.log("Generated reset link:", resetLink);
+  // The reset link
+  const resetLink = `${process.env.APP_URL || 'http://localhost:3000'}/password-reset?token=${token}`;
 
   // Send mail with defined transport object
   const info = await transporter.sendMail({
