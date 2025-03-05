@@ -1,6 +1,6 @@
 import { products, users, type Product, type InsertProduct, type User, type InsertUser } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql, count } from "drizzle-orm";
+import { eq, sql, count, desc } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -36,8 +36,15 @@ export interface IStorage {
   getProductCount(): Promise<number>;
   getUserProductsCount(userId: number): Promise<number>;
 
-  // Session store
+  //Session store
   sessionStore: session.Store;
+
+  // Admin analytics methods
+  getUsersByRole(): Promise<Record<string, number>>;
+  getProductsByCategory(): Promise<Record<string, number>>;
+  getRecentUsers(limit: number): Promise<User[]>;
+  updateUserRole(userId: number, role: string): Promise<User>;
+  deleteProduct(productId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -204,19 +211,73 @@ export class DatabaseStorage implements IStorage {
 
   async getUserCount(): Promise<number> {
     const result = await db.select({ count: count() }).from(users);
-    return result[0].count;
+    return result[0].count || 0;
   }
 
   async getProductCount(): Promise<number> {
     const result = await db.select({ count: count() }).from(products);
-    return result[0].count;
+    return result[0].count || 0;
   }
 
   async getUserProductsCount(userId: number): Promise<number> {
     const result = await db.select({ count: count() })
       .from(products)
       .where(eq(products.userId, userId));
-    return result[0].count;
+    return result[0].count || 0;
+  }
+
+  async getUsersByRole(): Promise<Record<string, number>> {
+    const result = await db.select({
+      role: users.role,
+      count: count()
+    })
+    .from(users)
+    .groupBy(users.role);
+
+    return result.reduce((acc, { role, count }) => {
+      acc[role] = count;
+      return acc;
+    }, {} as Record<string, number>);
+  }
+
+  async getProductsByCategory(): Promise<Record<string, number>> {
+    const result = await db.select({
+      category: products.category,
+      count: count()
+    })
+    .from(products)
+    .groupBy(products.category);
+
+    return result.reduce((acc, { category, count }) => {
+      if (category) {
+        acc[category] = count;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+  }
+
+  async getRecentUsers(limit: number): Promise<User[]> {
+    return db.select()
+      .from(users)
+      .orderBy(desc(users.createdAt))
+      .limit(limit);
+  }
+
+  async updateUserRole(userId: number, role: string): Promise<User> {
+    const updatedUsers = await db.update(users)
+      .set({ role })
+      .where(eq(users.id, userId))
+      .returning();
+
+    if (!updatedUsers || updatedUsers.length === 0) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+
+    return updatedUsers[0];
+  }
+
+  async deleteProduct(productId: number): Promise<void> {
+    await db.delete(products).where(eq(products.id, productId));
   }
 }
 
