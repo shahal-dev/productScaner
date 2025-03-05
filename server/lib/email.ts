@@ -33,19 +33,39 @@ export function generateResetToken() {
 }
 
 export async function sendPasswordResetEmail(email: string, token: string, username: string) {
-  // Create test account
-  const testAccount = await nodemailer.createTestAccount();
-
-  // Create reusable transporter
-  const transporter = nodemailer.createTransport({
-    host: "smtp.ethereal.email",
-    port: 587,
-    secure: false,
-    auth: {
-      user: testAccount.user,
-      pass: testAccount.pass,
-    },
-  });
+  // Configuration for a real email service
+  // For development, we'll fall back to ethereal for testing if no SMTP settings are provided
+  let transporter;
+  
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    // Using real SMTP server
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+    
+    console.log("Using configured SMTP server for emails");
+  } else {
+    // Fallback to ethereal for testing
+    const testAccount = await nodemailer.createTestAccount();
+    transporter = nodemailer.createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+    
+    console.log("Using Ethereal for email testing (emails won't be delivered to real recipients)");
+    console.log("Email preview URL will be shown in the console");
+  }
 
   // The reset link
   const resetLink = `${process.env.APP_URL || 'http://localhost:3000'}/password-reset?token=${token}`;
