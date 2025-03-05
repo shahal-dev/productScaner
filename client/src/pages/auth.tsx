@@ -14,7 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { SiGithub } from 'react-icons/si';
@@ -114,6 +114,14 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
+                    <div className="text-right">
+                      <a 
+                        href="/password-reset" 
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        Forgot password?
+                      </a>
+                    </div>
                     <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
                       {loginMutation.isPending ? 'Signing in...' : 'Sign in'}
                     </Button>

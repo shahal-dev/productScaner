@@ -1,6 +1,6 @@
 import { products, users, type Product, type InsertProduct, type User, type InsertUser } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, count } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -25,6 +25,16 @@ export interface IStorage {
   changePassword(userId: number, password: string): Promise<void>;
   deleteUser(userId: number): Promise<void>;
   getAllUsers(): Promise<User[]>;
+
+  // Password reset methods
+  setPasswordResetToken(userId: number, resetToken: string): Promise<void>;
+  getUserByResetToken(resetToken: string): Promise<User | undefined>;
+  resetPassword(userId: number, hashedPassword: string): Promise<void>;
+
+  // Admin stats methods
+  getUserCount(): Promise<number>;
+  getProductCount(): Promise<number>;
+  getUserProductsCount(userId: number): Promise<number>;
 
   // Session store
   sessionStore: session.Store;
@@ -100,7 +110,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.username, username));
     return user;
   }
-  
+
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db
       .select()
@@ -108,7 +118,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.email, email));
     return user;
   }
-  
+
   async getUserByVerificationToken(token: string): Promise<User | undefined> {
     const [user] = await db
       .select()
@@ -124,17 +134,17 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
-  
+
   async verifyUser(userId: number): Promise<void> {
     await db
       .update(users)
       .set({ 
-        isVerified: "true", 
+        isVerified: true, 
         verificationToken: null 
       })
       .where(eq(users.id, userId));
   }
-  
+
   async updateUserProfile(userId: number, userData: Partial<User>): Promise<User> {
     const [updatedUser] = await db
       .update(users)
@@ -143,30 +153,70 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedUser;
   }
-  
+
   async changePassword(userId: number, password: string): Promise<void> {
     await db
       .update(users)
       .set({ password })
       .where(eq(users.id, userId));
   }
-  
+
   async deleteUser(userId: number): Promise<void> {
     // First delete all associated products
     await db
       .delete(products)
       .where(eq(products.userId, userId));
-      
+
     // Then delete the user
     await db
       .delete(users)
       .where(eq(users.id, userId));
   }
-  
+
   async getAllUsers(): Promise<User[]> {
     return await db
       .select()
       .from(users);
+  }
+
+  async setPasswordResetToken(userId: number, resetToken: string): Promise<void> {
+    await db.update(users)
+      .set({ resetToken })
+      .where(eq(users.id, userId));
+  }
+
+  async getUserByResetToken(resetToken: string): Promise<User | undefined> {
+    const result = await db.select()
+      .from(users)
+      .where(eq(users.resetToken, resetToken))
+      .limit(1);
+    return result[0];
+  }
+
+  async resetPassword(userId: number, hashedPassword: string): Promise<void> {
+    await db.update(users)
+      .set({ 
+        password: hashedPassword,
+        resetToken: null
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async getUserCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(users);
+    return result[0].count;
+  }
+
+  async getProductCount(): Promise<number> {
+    const result = await db.select({ count: count() }).from(products);
+    return result[0].count;
+  }
+
+  async getUserProductsCount(userId: number): Promise<number> {
+    const result = await db.select({ count: count() })
+      .from(products)
+      .where(eq(products.userId, userId));
+    return result[0].count;
   }
 }
 

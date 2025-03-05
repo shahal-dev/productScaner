@@ -157,3 +157,33 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 }
+import { Express } from "express";
+import { storage } from "../storage";
+
+export function registerAdminRoutes(app: Express) {
+  // Get admin stats
+  app.get("/api/admin/stats", async (req, res) => {
+    // Check if user is authenticated and is an admin
+    if (!req.isAuthenticated() || req.user?.role !== "admin") {
+      return res.status(403).json({ message: "Unauthorized access" });
+    }
+
+    try {
+      // Get user count
+      const userCount = await storage.getUserCount();
+      
+      // Get product count
+      const productCount = await storage.getProductCount();
+      
+      res.json({
+        userCount,
+        productCount
+      });
+    } catch (error) {
+      console.error("Error fetching admin stats:", error);
+      res.status(500).json({ message: "Failed to fetch admin stats" });
+    }
+  });
+
+  // Add additional admin routes as needed
+}
