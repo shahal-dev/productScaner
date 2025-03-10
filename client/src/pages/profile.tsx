@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, UserCircle, BarChart3, Lock, AlertTriangle } from "lucide-react";
+import { Loader2, UserCircle, BarChart3, Lock, AlertTriangle, Camera } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useQuery } from "@tanstack/react-query";
 
@@ -91,6 +91,12 @@ function UserProfile({ user }: { user: any }) {
     },
   });
 
+  const deleteAccountForm = useForm({
+    defaultValues: {
+      password: '',
+    },
+  });
+
   const onSubmitPasswordChange = changePasswordForm.handleSubmit(async (data) => {
     if (data.newPassword !== data.confirmPassword) {
       toast({
@@ -151,13 +157,13 @@ function UserProfile({ user }: { user: any }) {
     }
   };
 
-  const handleDeleteAccount = async () => {
+  const handleDeleteAccount = deleteAccountForm.handleSubmit(async (data) => {
     if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
       return;
     }
 
     try {
-      await apiRequest('DELETE', '/api/profile');
+      await apiRequest('DELETE', '/api/profile', { password: data.password });
       window.location.href = '/auth'; // Redirect to auth page after deletion
     } catch (error) {
       toast({
@@ -166,16 +172,36 @@ function UserProfile({ user }: { user: any }) {
         variant: "destructive",
       });
     }
-  };
+  });
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Avatar className="h-20 w-20">
-          <AvatarImage src={user.profilePicture || ''} />
-          <AvatarFallback className="text-xl">{user.username.charAt(0).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <div>
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <Avatar className="h-24 w-24">
+            <AvatarImage src={user.profilePicture || ''} />
+            <AvatarFallback className="text-2xl">{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2">
+            <Button 
+              variant="secondary" 
+              size="sm"
+              className="rounded-full"
+              onClick={() => document.getElementById('profile-picture-input')?.click()}
+            >
+              <Camera className="h-4 w-4 mr-1" />
+              Change
+            </Button>
+            <Input
+              id="profile-picture-input"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleProfilePictureUpload}
+            />
+          </div>
+        </div>
+        <div className="text-center">
           <h2 className="text-2xl font-bold">{user.username}</h2>
           <p className="text-muted-foreground">{user.email}</p>
           <div className="mt-1 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold">
@@ -184,17 +210,18 @@ function UserProfile({ user }: { user: any }) {
         </div>
       </div>
 
-      <Tabs defaultValue="account">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="account" className="mt-8">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="account">Account Info</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="danger" className="text-destructive">Danger Zone</TabsTrigger>
         </TabsList>
 
         <TabsContent value="account" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Account Information</CardTitle>
-              <CardDescription>View and update your account details</CardDescription>
+              <CardDescription>View your account details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -215,28 +242,7 @@ function UserProfile({ user }: { user: any }) {
                   <p>{products?.length || 0}</p>
                 </div>
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Profile Picture</h3>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleProfilePictureUpload}
-                  />
-                </div>
-              </div>
             </CardContent>
-            <CardFooter>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteAccount}
-                className="w-full"
-              >
-                <AlertTriangle className="w-4 h-4 mr-2" />
-                Delete Account
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
 
@@ -293,6 +299,41 @@ function UserProfile({ user }: { user: any }) {
 
                   <Button type="submit" className="w-full">
                     Update Password
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="danger">
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive">Delete Account</CardTitle>
+              <CardDescription>
+                This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...deleteAccountForm}>
+                <form onSubmit={handleDeleteAccount} className="space-y-4">
+                  <FormField
+                    control={deleteAccountForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm your password</FormLabel>
+                        <FormControl>
+                          <Input type="password" {...field} placeholder="Enter your password to confirm" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button type="submit" variant="destructive" className="w-full">
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Delete Account
                   </Button>
                 </form>
               </Form>

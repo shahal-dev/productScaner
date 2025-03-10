@@ -199,6 +199,23 @@ export function registerProfileRoutes(app: Express) {
     }
 
     try {
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({ message: "Password is required to delete account" });
+      }
+
+      // Verify password
+      const user = await storage.getUser(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const isPasswordValid = await comparePasswords(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(400).json({ message: "Incorrect password" });
+      }
+
       // Delete user and their products
       await storage.deleteUser(req.user!.id);
 
