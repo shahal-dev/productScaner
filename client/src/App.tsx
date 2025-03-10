@@ -9,6 +9,7 @@ import Home from "@/pages/home";
 import PluginDemo from "@/pages/plugin-demo";
 import AuthPage from "@/pages/auth";
 import ProfilePage from "@/pages/profile";
+import AdminDashboard from "@/pages/admin";
 import PasswordResetPage from "@/pages/password-reset";
 import NotFound from "@/pages/not-found";
 
@@ -21,6 +22,7 @@ function Router() {
           <ProtectedRoute path="/" component={Home} />
           <ProtectedRoute path="/plugin-demo" component={PluginDemo} />
           <ProtectedRoute path="/profile" component={ProfilePage} />
+          <ProtectedRoute path="/admin" component={AdminDashboard} />
           <Route path="/auth" component={AuthPage} />
           <Route path="/password-reset" component={PasswordResetPage} />
           <Route component={NotFound} />

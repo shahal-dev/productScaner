@@ -16,67 +16,31 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, UserCircle, BarChart3, Lock, AlertTriangle, Camera } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, UserCircle, Camera, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
-// Admin analytics component
-function AdminAnalytics() {
-  const [userCount, setUserCount] = useState(0);
-  const [productCount, setProductCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await apiRequest('GET', '/api/admin/stats', undefined);
-        const data = await res.json();
-        setUserCount(data.userCount);
-        setProductCount(data.productCount);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Failed to fetch admin stats:", error);
-        setIsLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, []);
-
-  if (isLoading) {
-    return <Loader2 className="h-8 w-8 animate-spin mx-auto my-8" />;
-  }
-
+// Guest view component
+function GuestView() {
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Admin Analytics</h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Total Users</CardTitle>
-            <CardDescription>Registered user accounts</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{userCount}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Total Products</CardTitle>
-            <CardDescription>Products identified across all users</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{productCount}</div>
-          </CardContent>
-        </Card>
+    <div className="max-w-md mx-auto text-center space-y-6 py-8">
+      <UserCircle className="h-20 w-20 mx-auto text-muted-foreground" />
+      <h2 className="text-2xl font-bold">Guest Access</h2>
+      <p className="text-muted-foreground">
+        You're browsing as a guest. Create an account to save your identified products and access more features.
+      </p>
+      <div className="flex gap-4 justify-center">
+        <Button variant="outline" onClick={() => window.location.href = '/auth?tab=login'}>
+          Sign In
+        </Button>
+        <Button onClick={() => window.location.href = '/auth?tab=register'}>
+          Create Account
+        </Button>
       </div>
     </div>
   );
 }
 
-// Normal user profile component
+// User profile component
 function UserProfile({ user }: { user: any }) {
   const { toast } = useToast();
   const { data: products } = useQuery<any[]>({
@@ -345,27 +309,6 @@ function UserProfile({ user }: { user: any }) {
   );
 }
 
-// Guest view
-function GuestView() {
-  return (
-    <div className="max-w-md mx-auto text-center space-y-6 py-8">
-      <UserCircle className="h-20 w-20 mx-auto text-muted-foreground" />
-      <h2 className="text-2xl font-bold">Guest Access</h2>
-      <p className="text-muted-foreground">
-        You're browsing as a guest. Create an account to save your identified products and access more features.
-      </p>
-      <div className="flex gap-4 justify-center">
-        <Button variant="outline" onClick={() => window.location.href = '/auth?tab=login'}>
-          Sign In
-        </Button>
-        <Button onClick={() => window.location.href = '/auth?tab=register'}>
-          Create Account
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export default function ProfilePage() {
   const { user, isLoading } = useAuth();
 
@@ -388,12 +331,6 @@ export default function ProfilePage() {
   return (
     <div className="container py-8">
       <UserProfile user={user} />
-
-      {user.role === 'admin' && (
-        <div className="mt-12 pb-8">
-          <AdminAnalytics />
-        </div>
-      )}
     </div>
   );
 }
