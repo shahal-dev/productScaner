@@ -13,10 +13,10 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 const storage2 = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: function (req: Express.Request, file: Express.Multer.File, cb: Function) {
     cb(null, uploadDir);
   },
-  filename: function (req, file, cb) {
+  filename: function (req: Express.Request, file: Express.Multer.File, cb: Function) {
     const uniqueSuffix = `${Date.now()}-${randomBytes(8).toString("hex")}`;
     cb(null, `${uniqueSuffix}${path.extname(file.originalname)}`);
   },
@@ -25,7 +25,7 @@ const storage2 = multer.diskStorage({
 const upload = multer({
   storage: storage2,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
-  fileFilter: (req, file, cb) => {
+  fileFilter: (req: Express.Request, file: Express.Multer.File, cb: Function) => {
     // Accept only images
     if (file.mimetype.startsWith("image/")) {
       cb(null, true);
@@ -177,10 +177,10 @@ export function registerProfileRoutes(app: Express) {
     try {
       // Get user data
       const user = await storage.getUser(req.user!.id);
-      
+
       // Get user's products count
       const productsCount = await storage.getUserProductsCount(req.user!.id);
-      
+
       // Return user profile data
       res.json({
         ...user,

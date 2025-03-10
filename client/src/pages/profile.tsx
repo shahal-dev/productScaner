@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -51,7 +50,7 @@ function AdminAnalytics() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Admin Analytics</h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -62,7 +61,7 @@ function AdminAnalytics() {
             <div className="text-3xl font-bold">{userCount}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Total Products</CardTitle>
@@ -107,12 +106,12 @@ function UserProfile({ user }: { user: any }) {
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       });
-      
+
       toast({
         title: "Password updated",
         description: "Your password has been changed successfully",
       });
-      
+
       changePasswordForm.reset();
     } catch (error) {
       toast({
@@ -122,6 +121,52 @@ function UserProfile({ user }: { user: any }) {
       });
     }
   });
+
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+
+    try {
+      const response = await fetch('/api/profile/picture', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error('Failed to upload profile picture');
+
+      const data = await response.json();
+      toast({
+        title: "Success",
+        description: "Profile picture updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload profile picture",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await apiRequest('DELETE', '/api/profile');
+      window.location.href = '/auth'; // Redirect to auth page after deletion
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete account",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -144,7 +189,7 @@ function UserProfile({ user }: { user: any }) {
           <TabsTrigger value="account">Account Info</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="account" className="space-y-4">
           <Card>
             <CardHeader>
@@ -170,10 +215,31 @@ function UserProfile({ user }: { user: any }) {
                   <p>{products?.length || 0}</p>
                 </div>
               </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Profile Picture</h3>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePictureUpload}
+                  />
+                </div>
+              </div>
             </CardContent>
+            <CardFooter>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteAccount}
+                className="w-full"
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                Delete Account
+              </Button>
+            </CardFooter>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="security">
           <Card>
             <CardHeader>
@@ -196,7 +262,7 @@ function UserProfile({ user }: { user: any }) {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={changePasswordForm.control}
                     name="newPassword"
@@ -210,7 +276,7 @@ function UserProfile({ user }: { user: any }) {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={changePasswordForm.control}
                     name="confirmPassword"
@@ -224,7 +290,7 @@ function UserProfile({ user }: { user: any }) {
                       </FormItem>
                     )}
                   />
-                  
+
                   <Button type="submit" className="w-full">
                     Update Password
                   </Button>
@@ -281,7 +347,7 @@ export default function ProfilePage() {
   return (
     <div className="container py-8">
       <UserProfile user={user} />
-      
+
       {user.role === 'admin' && (
         <div className="mt-12 pb-8">
           <AdminAnalytics />

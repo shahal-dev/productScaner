@@ -1,4 +1,4 @@
-import { pgTable, text, serial, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -13,6 +13,7 @@ export const users = pgTable("users", {
   resetToken: text("reset_token"),
   role: text("role").default("user").notNull(),
   profilePicture: text("profile_picture"),
+  deleted: boolean("deleted").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -45,7 +46,16 @@ export const insertUserSchema = createInsertSchema(users, {
   username: z.string().min(3).max(50),
   email: z.string().email(),
   password: z.string().min(6),
-}).omit({ id: true, createdAt: true, isVerified: true, verificationToken: true, role: true, profilePicture: true });
+}).omit({ 
+  id: true, 
+  createdAt: true, 
+  isVerified: true, 
+  verificationToken: true, 
+  resetToken: true,
+  role: true, 
+  profilePicture: true,
+  deleted: true 
+});
 
 export const insertProductSchema = createInsertSchema(products).omit({ 
   id: true,
@@ -53,7 +63,12 @@ export const insertProductSchema = createInsertSchema(products).omit({
   createdAt: true 
 });
 
+export const updateProfileSchema = createInsertSchema(users).pick({ 
+  profilePicture: true 
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
