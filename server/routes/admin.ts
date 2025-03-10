@@ -89,7 +89,7 @@ async function updateUserRole(userId: number, role: string) {
 // Register admin routes
 export function registerAdminRoutes(app: Express) {
   // Admin dashboard data
-  app.get("/api/admin/analytics", ensureAdmin, async (req, res) => {
+  app.get("/api/admin/stats", ensureAdmin, async (req, res) => {
     try {
       const analyticsData = await getAnalyticsData();
       res.json(analyticsData);
