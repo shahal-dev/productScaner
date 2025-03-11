@@ -1,4 +1,4 @@
-import { pgTable, text, serial, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, jsonb, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -30,7 +30,17 @@ export const products = pgTable("products", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Define the relationships between tables
+export const ggsData = pgTable("ggs_data", {
+  id: serial("id").primaryKey(),
+  originalId: integer("original_id").notNull(),
+  sex: integer("sex").notNull(), 
+  generations: integer("generations").notNull(),
+  eduLevel: integer("edu_level").notNull(),
+  age: integer("age").notNull(),
+  eventData: jsonb("event_data").$type<Record<string, string>>(), 
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   products: many(products),
 }));
@@ -63,6 +73,11 @@ export const insertProductSchema = createInsertSchema(products).omit({
   createdAt: true 
 });
 
+export const insertGGSDataSchema = createInsertSchema(ggsData).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const updateProfileSchema = createInsertSchema(users).pick({ 
   profilePicture: true 
 });
@@ -72,3 +87,5 @@ export type User = typeof users.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
 export type UpdateProfile = z.infer<typeof updateProfileSchema>;
+export type InsertGGSData = z.infer<typeof insertGGSDataSchema>;
+export type GGSData = typeof ggsData.$inferSelect;

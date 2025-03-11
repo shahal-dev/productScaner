@@ -3,20 +3,23 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { extractTextFromImage } from "./lib/ocr";
 import { identifyProduct } from "./lib/openai";
-import { insertProductSchema } from "@shared/schema";
+import { insertProductSchema, insertGGSDataSchema } from "@shared/schema";
 import { registerProfileRoutes } from "./routes/profile";
 import { registerAdminRoutes } from "./routes/admin";
 import { registerResetPasswordRoutes } from "./routes/reset-password";
 import path from "path";
+import fs from "fs";
+import { parse } from "csv-parse";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded files
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-  
+
   // Register other route modules
   registerProfileRoutes(app);
   registerAdminRoutes(app);
   registerResetPasswordRoutes(app);
+
   app.post("/api/products/identify", async (req, res) => {
     try {
       // Check if user is authenticated
@@ -93,6 +96,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error searching products:', error);
       res.status(500).json({ message: "Failed to search products" });
+    }
+  });
+
+  // GGS Data Routes
+  app.get("/api/statuses", async (req, res) => {
+    try {
+      const [genderStats, eventsByGender] = await Promise.all([
+        storage.getGGSDataByGender(),
+        storage.getGGSEventsByGender()
+      ]);
+
+      res.json({
+        genderStats,
+        eventsByGender
+      });
+    } catch (error) {
+      console.error('Error fetching GGS data:', error);
+      res.status(500).json({ message: "Failed to fetch GGS data" });
+    }
+  });
+
+  // Import CSV data route
+  app.post("/api/ggs/import", async (req, res) => {
+    try {
+      const csvPath = path.join(process.cwd(), "attached_assets", "GGS_new.csv");
+      const fileContent = await fs.promises.readFile(csvPath, 'utf-8');
+
+      parse(fileContent, {
+        delimiter: ';',
+        columns: true,
+        cast: true
+      }, async (err: Error | null, records: Record<string, any>[]) => {
+        if (err) {
+          throw err;
+        }
+
+        for (const record of records) {
+          const eventData: Record<string, string> = {};
+          // Extract a15.1 to a34.12 columns into eventData
+          for (let i = 15; i <= 34; i++) {
+            for (let j = 1; j <= 12; j++) {
+              const key = `a${i}.${j}`;
+              if (record[key]) {
+                eventData[key] = record[key];
+              }
+            }
+          }
+
+          await storage.createGGSData({
+            originalId: parseInt(record.ID),
+            sex: parseInt(record.sex),
+            generations: parseInt(record.generations),
+            eduLevel: parseInt(record.edu_level),
+            age: parseInt(record.age),
+            eventData
+          });
+        }
+
+        res.json({ message: "CSV data imported successfully" });
+      });
+    } catch (error) {
+      console.error('Error importing CSV:', error);
+      res.status(500).json({ message: "Failed to import CSV data" });
     }
   });
 
