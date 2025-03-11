@@ -40,12 +40,12 @@ export default function AuthPage() {
     }
   }, [isVerified, toast]);
 
-  // Redirect if already logged in
+  // Redirect if already logged in (including guest users)
   useEffect(() => {
-    if (user && !isGuest) {
+    if (user) {
       setLocation('/');
     }
-  }, [user, isGuest, setLocation]);
+  }, [user, setLocation]);
   
   // Handle guest login
   const handleGuestLogin = () => {

@@ -105,6 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         title: "Guest access granted",
         description: "You're now browsing as a guest. Create an account to save your data.",
       });
+      
+      // Explicitly redirect to home page
+      window.location.href = '/';
     },
     onError: (error: Error) => {
       toast({
