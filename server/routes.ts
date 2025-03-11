@@ -9,7 +9,7 @@ import { registerAdminRoutes } from "./routes/admin";
 import { registerResetPasswordRoutes } from "./routes/reset-password";
 import path from "path";
 import fs from "fs";
-import { parse } from "csv-parse";
+import { parse, CsvError } from "csv-parse";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded files
@@ -22,9 +22,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/products/identify", async (req, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.isAuthenticated || !req.isAuthenticated()) {
-        return res.status(401).json({ message: "Authentication required" });
+      // Check if user is authenticated or has guest session
+      const isGuest = req.session.isGuest === true;
+      const isAuthenticated = req.isAuthenticated && req.isAuthenticated();
+      
+      if (!isAuthenticated && !isGuest) {
+        return res.status(401).json({ message: "Authentication or guest access required" });
       }
 
       const { image } = req.body;
@@ -41,7 +44,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const productDetails = await identifyProduct(image, extractedText);
       console.log('Product details:', productDetails);
 
-      // Use the logged-in user's ID instead of an auto-incremented value
+      // For guest users, we don't save the product to the database
+      // Just return the identified product details
+      if (isGuest) {
+        console.log('Guest user identified product (not saving to database)');
+        return res.json({
+          ...productDetails,
+          temporary: true,
+          message: "Product identified but not saved. Create an account to save your products."
+        });
+      }
+
+      // For authenticated users, proceed with saving to the database
       const userId = req.user?.id;
       console.log(`Creating product for user ID: ${userId}`);
 
@@ -117,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         columns: true,
         skip_empty_lines: true,
         trim: true
-      }, async (err: Error | null, records: Record<string, any>[]) => {
+      }, async (err: CsvError | undefined, records: Record<string, any>[]) => {
         if (err) {
           console.error('CSV parsing error:', err);
           throw err;

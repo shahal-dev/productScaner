@@ -9,11 +9,20 @@ import { ProductCard } from '@/components/product-card';
 import { apiRequest } from '@/lib/queryClient';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { type Product } from '@shared/schema';
-import { Puzzle } from 'lucide-react';
+import { Puzzle, LogIn } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
+
+// Extended Product type to include temporary products for guests
+type ExtendedProduct = Product & {
+  temporary?: boolean;
+  message?: string;
+};
 
 export default function Home() {
   const { toast } = useToast();
+  const { isGuest } = useAuth();
   const [processing, setProcessing] = useState(false);
+  const [temporaryProduct, setTemporaryProduct] = useState<ExtendedProduct | null>(null);
 
   const { data: products } = useQuery<Product[]>({
     queryKey: ['/api/products']
@@ -25,11 +34,19 @@ export default function Home() {
       const res = await apiRequest('POST', '/api/products/identify', { image });
       return res.json();
     },
-    onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Product successfully identified and added to database',
-      });
+    onSuccess: (data) => {
+      // Check if it's a temporary product (for guest users)
+      if (data.temporary) {
+        toast({
+          title: 'Product Identified',
+          description: data.message || 'Product identified but not saved. Create an account to save your products.',
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Product successfully identified and added to database',
+        });
+      }
       setProcessing(false);
     },
     onError: (error) => {
