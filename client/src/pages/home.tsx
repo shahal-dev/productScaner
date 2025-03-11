@@ -37,6 +37,8 @@ export default function Home() {
     onSuccess: (data) => {
       // Check if it's a temporary product (for guest users)
       if (data.temporary) {
+        // Store the temporary product for display
+        setTemporaryProduct(data);
         toast({
           title: 'Product Identified',
           description: data.message || 'Product identified but not saved. Create an account to save your products.',
@@ -98,13 +100,40 @@ export default function Home() {
         </div>
       </div>
 
-      {products && products.length > 0 && (
+      {/* For authenticated users with saved products */}
+      {!isGuest && products && products.length > 0 && (
         <div className="mt-16">
           <h2 className="text-2xl font-semibold mb-6">Identified Products</h2>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* For guest users with a temporary product */}
+      {isGuest && temporaryProduct && (
+        <div className="mt-16">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold">Product Identified</h2>
+            <Button asChild variant="default">
+              <Link href="/auth">
+                <LogIn className="mr-2 h-4 w-4" />
+                Create Account to Save
+              </Link>
+            </Button>
+          </div>
+          
+          <div className="border border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-900 p-4 rounded-lg mb-6">
+            <p className="text-sm text-yellow-800 dark:text-yellow-300">
+              As a guest user, this product identification is temporary and won't be saved. 
+              Create an account to save your identified products.
+            </p>
+          </div>
+          
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <ProductCard key="temp" product={temporaryProduct as Product} />
           </div>
         </div>
       )}
