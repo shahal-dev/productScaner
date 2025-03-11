@@ -40,9 +40,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const extractedText = await extractTextFromImage(image);
       console.log('Extracted text:', extractedText);
 
-      console.log('Starting OpenAI identification...');
-      const productDetails = await identifyProduct(image, extractedText);
-      console.log('Product details:', productDetails);
+      let productDetails;
+      try {
+        console.log('Starting OpenAI identification...');
+        productDetails = await identifyProduct(image, extractedText);
+        console.log('Product details:', productDetails);
+      } catch (error) {
+        console.error('Error identifying product with OpenAI:', error);
+        
+        // Simple fallback identification based on OCR text
+        // This allows guest users to test the feature even without a working OpenAI key
+        console.log('Using fallback identification based on OCR text');
+        
+        // Extract keywords from OCR text for simple categorization
+        const lowerText = extractedText.toLowerCase();
+        let category = 'Electronics'; // Default
+        let brand = 'Unknown';
+        
+        // Simple brand detection
+        if (lowerText.includes('nvidia') || lowerText.includes('geforce') || lowerText.includes('rtx')) {
+          brand = 'NVIDIA';
+        } else if (lowerText.includes('amd') || lowerText.includes('radeon')) {
+          brand = 'AMD';
+        } else if (lowerText.includes('intel')) {
+          brand = 'Intel';
+        } else if (lowerText.includes('samsung')) {
+          brand = 'Samsung';
+        } else if (lowerText.includes('apple') || lowerText.includes('iphone')) {
+          brand = 'Apple';
+        }
+        
+        // Create product details based on OCR text
+        productDetails = {
+          name: `Product (${extractedText.slice(0, 30)}${extractedText.length > 30 ? '...' : ''})`,
+          description: `This product was identified using OCR technology. The extracted text was: ${extractedText}`,
+          brand: brand,
+          category: category
+        };
+      }
 
       // For guest users, we don't save the product to the database
       // Just return the identified product details
@@ -64,16 +99,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User ID not available. Please log in again." });
       }
 
-      const product = await storage.createProduct({
-        ...productDetails,
-        identifiedText: extractedText,
-        imageUrl: image,
-        metadata: {}
-      }, userId);
+      try {
+        const product = await storage.createProduct({
+          ...productDetails,
+          identifiedText: extractedText,
+          imageUrl: image,
+          metadata: {}
+        }, userId);
 
-      console.log(`Product created successfully for user ID: ${userId}`);
-
-      res.json(product);
+        console.log(`Product created successfully for user ID: ${userId}`);
+        
+        return res.json(product);
+      } catch (error) {
+        console.error('Error saving product to database:', error);
+        // Still return the identified product even if saving fails
+        return res.json({
+          ...productDetails,
+          temporary: true,
+          message: "Product identified but encountered an error while saving. Please try again."
+        });
+      }
     } catch (error) {
       console.error('Detailed error:', error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
