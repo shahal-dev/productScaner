@@ -8,13 +8,26 @@ import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+// Define guest user type
+type GuestUser = {
+  guest: true;
+  createdAt: string;
+};
+
+// Define our user type to be either an authenticated user or a guest
+type UserState = SelectUser | GuestUser | null;
+
+// Update the context type to include guest functionality
 type AuthContextType = {
-  user: SelectUser | null;
+  user: UserState;
+  isGuest: boolean;
+  isAuthenticated: boolean;
   isLoading: boolean;
   error: Error | null;
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  guestLoginMutation: UseMutationResult<GuestUser, Error, void>;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
@@ -27,11 +40,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
-  } = useQuery<SelectUser | null>({
+  } = useQuery<UserState>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
+  // Check if the user is a guest or authenticated user
+  const isGuest = !!user && 'guest' in user;
+  const isAuthenticated = !!user && !isGuest;
+
+  // Regular authentication mutations
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
@@ -39,6 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${user.username}!`,
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -56,6 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Registration successful",
+        description: "Please check your email to verify your account.",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -66,12 +92,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // Guest login mutation
+  const guestLoginMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/guest");
+      return await res.json();
+    },
+    onSuccess: (guestData: GuestUser) => {
+      queryClient.setQueryData(["/api/user"], guestData);
+      toast({
+        title: "Guest access granted",
+        description: "You're now browsing as a guest. Create an account to save your data.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Guest access failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handles both regular user and guest logout
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully.",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -86,11 +139,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user: user ?? null,
+        isGuest,
+        isAuthenticated,
         isLoading,
         error,
         loginMutation,
         logoutMutation,
         registerMutation,
+        guestLoginMutation,
       }}
     >
       {children}

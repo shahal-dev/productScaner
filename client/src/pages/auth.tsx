@@ -21,16 +21,36 @@ import { SiGithub } from 'react-icons/si';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AuthPage() {
-  const [_, setLocation] = useLocation();
-  const { user, loginMutation, registerMutation } = useAuth();
+  const [location, setLocation] = useLocation();
+  const { user, isGuest, loginMutation, registerMutation, guestLoginMutation } = useAuth();
   const { toast } = useToast();
+  
+  // Check for URL params
+  const searchParams = new URLSearchParams(location.split('?')[1]);
+  const isVerified = searchParams.get('verified') === 'true';
+  
+  // Show toast for successful verification
+  useEffect(() => {
+    if (isVerified) {
+      toast({
+        title: "Email verified successfully!",
+        description: "Your account has been verified. You can now log in.",
+        variant: "default",
+      });
+    }
+  }, [isVerified, toast]);
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (user && !isGuest) {
       setLocation('/');
     }
-  }, [user, setLocation]);
+  }, [user, isGuest, setLocation]);
+  
+  // Handle guest login
+  const handleGuestLogin = () => {
+    guestLoginMutation.mutate();
+  };
 
   const loginForm = useForm({
     defaultValues: {
@@ -191,10 +211,19 @@ export default function AuthPage() {
                 </div>
               </div>
 
-              <div className="mt-4">
+              <div className="mt-4 space-y-2">
                 <Button variant="outline" className="w-full" onClick={() => window.location.href = '/api/auth/github'}>
                   <SiGithub className="mr-2 h-4 w-4" />
                   GitHub
+                </Button>
+                
+                <Button 
+                  variant="ghost" 
+                  className="w-full"
+                  onClick={handleGuestLogin}
+                  disabled={guestLoginMutation.isPending}
+                >
+                  {guestLoginMutation.isPending ? 'Loading...' : 'Continue as Guest'}
                 </Button>
               </div>
             </div>
