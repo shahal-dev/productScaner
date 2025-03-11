@@ -11,6 +11,7 @@ import AuthPage from "@/pages/auth";
 import ProfilePage from "@/pages/profile";
 import AdminDashboard from "@/pages/admin";
 import PasswordResetPage from "@/pages/password-reset";
+import GGSVisualization from "@/pages/ggs-visualization";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
           <ProtectedRoute path="/plugin-demo" component={PluginDemo} />
           <ProtectedRoute path="/profile" component={ProfilePage} />
           <ProtectedRoute path="/admin" component={AdminDashboard} />
+          <ProtectedRoute path="/ggs-visualization" component={GGSVisualization} />
           <Route path="/auth" component={AuthPage} />
           <Route path="/password-reset" component={PasswordResetPage} />
           <Route component={NotFound} />

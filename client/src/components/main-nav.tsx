@@ -8,9 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User } from "lucide-react";
-import { BarChart3 } from "lucide-react"; // Added import for BarChart3 icon
-
+import { LogOut, User, BarChart3, ChartBar } from "lucide-react";
 
 export function MainNav() {
   const { user, logoutMutation } = useAuth();
@@ -37,6 +35,12 @@ export function MainNav() {
               Plugin Demo
             </Link>
           </Button>
+          <Button asChild variant="ghost">
+            <Link href="/ggs-visualization" className="text-sm font-medium">
+              <ChartBar className="h-4 w-4 mr-2" />
+              GGS Data
+            </Link>
+          </Button>
         </nav>
 
         <div className="ml-auto flex items-center space-x-4">
@@ -56,12 +60,12 @@ export function MainNav() {
                   <span>Profile</span>
                 </DropdownMenuItem>
                 {user.role === 'admin' && (
-                  <DropdownMenuItem onClick={() => window.location.href = '/admin'}> {/* Changed route to /admin */}
+                  <DropdownMenuItem onClick={() => window.location.href = '/admin'}>
                     <BarChart3 className="mr-2 h-4 w-4" />
                     <span>Admin Dashboard</span>
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuSeparator /> {/* Added separator for better visual separation */}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
