@@ -40,9 +40,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
-  } = useQuery<UserState>({
+  } = useQuery<UserState | null>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
   // Check if the user is a guest or authenticated user
