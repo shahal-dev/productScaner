@@ -85,28 +85,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/products/search", async (req, res) => {
-    try {
-      const { q } = req.query;
-      if (!q || typeof q !== "string") {
-        return res.status(400).json({ message: "Search query required" });
-      }
-      const products = await storage.searchProducts(q);
-      res.json(products);
-    } catch (error) {
-      console.error('Error searching products:', error);
-      res.status(500).json({ message: "Failed to search products" });
-    }
-  });
-
   // GGS Data Routes
   app.get("/api/statuses", async (req, res) => {
     try {
+      console.log('Fetching GGS data...');
       const [genderStats, eventsByGender] = await Promise.all([
         storage.getGGSDataByGender(),
         storage.getGGSEventsByGender()
       ]);
 
+      console.log('GGS data fetched:', { genderStats, eventsByGender });
       res.json({
         genderStats,
         eventsByGender
@@ -120,17 +108,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import CSV data route
   app.post("/api/ggs/import", async (req, res) => {
     try {
+      console.log('Starting CSV import process...');
       const csvPath = path.join(process.cwd(), "attached_assets", "GGS_new.csv");
       const fileContent = await fs.promises.readFile(csvPath, 'utf-8');
+      console.log('CSV file read successfully');
 
       parse(fileContent, {
-        delimiter: ';',
         columns: true,
-        cast: true
+        skip_empty_lines: true,
+        trim: true
       }, async (err: Error | null, records: Record<string, any>[]) => {
         if (err) {
+          console.error('CSV parsing error:', err);
           throw err;
         }
+
+        console.log(`Processing ${records.length} records...`);
 
         for (const record of records) {
           const eventData: Record<string, string> = {};
@@ -144,16 +137,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          await storage.createGGSData({
-            originalId: parseInt(record.ID),
-            sex: parseInt(record.sex),
-            generations: parseInt(record.generations),
-            eduLevel: parseInt(record.edu_level),
-            age: parseInt(record.age),
-            eventData
-          });
+          try {
+            await storage.createGGSData({
+              originalId: parseInt(record.ID || '0'),
+              sex: parseInt(record.sex || '0'),
+              generations: parseInt(record.generations || '0'),
+              eduLevel: parseInt(record.edu_level || '0'),
+              age: parseInt(record.age || '0'),
+              eventData
+            });
+          } catch (e) {
+            console.error('Error processing record:', record, e);
+          }
         }
 
+        console.log('CSV import completed');
         res.json({ message: "CSV data imported successfully" });
       });
     } catch (error) {
@@ -162,6 +160,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/products/search", async (req, res) => {
+    try {
+      const { q } = req.query;
+      if (!q || typeof q !== "string") {
+        return res.status(400).json({ message: "Search query required" });
+      }
+      const products = await storage.searchProducts(q);
+      res.json(products);
+    } catch (error) {
+      console.error('Error searching products:', error);
+      res.status(500).json({ message: "Failed to search products" });
+    }
+  });
   const httpServer = createServer(app);
   return httpServer;
 }

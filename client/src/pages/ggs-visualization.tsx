@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Constants for data mapping
 const GENERATION_LABELS = {
@@ -24,10 +25,40 @@ const LOCATION_LABELS = {
   3: "Rural Area"
 };
 
+interface GGSEvent {
+  id: number;
+  originalId: number;
+  sex: number;
+  generations: number;
+  eduLevel: number;
+  age: number;
+  eventData: Record<string, string>;
+}
+
+interface GGSData {
+  genderStats: {
+    male: number;
+    female: number;
+  };
+  eventsByGender: {
+    male: GGSEvent[];
+    female: GGSEvent[];
+  };
+}
+
 export default function GGSVisualization() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery<GGSData>({
     queryKey: ['/api/statuses']
   });
+
+  const importData = async () => {
+    try {
+      await fetch('/api/ggs/import', { method: 'POST' });
+      refetch(); // Refresh the data after import
+    } catch (error) {
+      console.error('Failed to import data:', error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -37,11 +68,14 @@ export default function GGSVisualization() {
     );
   }
 
-  const { genderStats, eventsByGender } = data || { genderStats: { male: 0, female: 0 }, eventsByGender: { male: [], female: [] } };
+  const { genderStats = { male: 0, female: 0 }, eventsByGender = { male: [], female: [] } } = data || {};
 
   return (
     <div className="container py-8">
-      <h1 className="text-3xl font-bold mb-8">GGS Data Analysis</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">GGS Data Analysis</h1>
+        <Button onClick={importData}>Import GGS Data</Button>
+      </div>
 
       <div className="grid gap-6">
         {/* Gender Distribution Card */}
@@ -72,7 +106,7 @@ export default function GGSVisualization() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {eventsByGender.male.map((event: any) => (
+                {eventsByGender.male.map((event: GGSEvent) => (
                   <div key={event.id} className="p-4 bg-blue-50 rounded-lg">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -101,7 +135,7 @@ export default function GGSVisualization() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {eventsByGender.female.map((event: any) => (
+                {eventsByGender.female.map((event: GGSEvent) => (
                   <div key={event.id} className="p-4 bg-pink-50 rounded-lg">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
