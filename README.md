@@ -22,6 +22,21 @@ This application can be run using Docker, which makes it easy to deploy in any e
 
 ### Running with Docker
 
+#### Option 1: Using the Helper Script
+
+1. Clone this repository
+2. Make the helper script executable: `chmod +x docker-run.sh`
+3. Run the helper script: `./docker-run.sh`
+4. The script will:
+   - Check for Docker and Docker Compose
+   - Create a sample `.env` file if one doesn't exist
+   - Build and start the containers
+   - Wait for the database to be ready
+   - Run migrations
+   - Provide a success message with the URL
+
+#### Option 2: Manual Setup
+
 1. Clone this repository
 2. Create a `.env` file in the root directory with your environment variables:
 
@@ -45,7 +60,13 @@ EMAIL_FROM=noreply@example.com
 docker-compose up -d
 ```
 
-4. Access the application at http://localhost:4060
+4. Run migrations:
+
+```bash
+docker-compose exec app npm run db:push
+```
+
+5. Access the application at http://localhost:4060
 
 ### Database Migration
 

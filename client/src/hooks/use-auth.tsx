@@ -77,12 +77,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/register", credentials);
       return await res.json();
     },
-    onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
+    onSuccess: (response) => {
+      // Don't set the user data - they need to verify first
       toast({
         title: "Registration successful",
-        description: "Please check your email to verify your account.",
+        description: "Please check your email to verify your account before logging in.",
       });
+      // Redirect to login tab
+      const authTabs = document.querySelector('[data-state="inactive"][data-value="login"]') as HTMLElement;
+      if (authTabs) {
+        authTabs.click();
+      }
     },
     onError: (error: Error) => {
       toast({

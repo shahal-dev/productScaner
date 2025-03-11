@@ -29,8 +29,9 @@ export default function AuthPage() {
   const searchParams = new URLSearchParams(location.split('?')[1]);
   const isVerified = searchParams.get('verified') === 'true';
   
-  // Show toast for successful verification
+  // Check URL parameters
   useEffect(() => {
+    // Show toast for successful verification
     if (isVerified) {
       toast({
         title: "Email verified successfully!",
@@ -38,7 +39,17 @@ export default function AuthPage() {
         variant: "default",
       });
     }
-  }, [isVerified, toast]);
+    
+    // Show toast if redirected for unverified access attempt
+    const needsVerification = searchParams.get('needsVerification') === 'true';
+    if (needsVerification) {
+      toast({
+        title: "Email verification required",
+        description: "Please verify your email before accessing the application. Check your inbox for the verification link.",
+        variant: "destructive",
+      });
+    }
+  }, [isVerified, toast, searchParams]);
 
   // Redirect if already logged in (including guest users)
   useEffect(() => {
