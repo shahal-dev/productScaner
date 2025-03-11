@@ -140,14 +140,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: InsertUser): Promise<User> {
+    // Create a properly typed user object with all required fields
+    const userDataWithDefaults = {
+      ...userData,
+      role: "user",
+      deleted: false,
+      // isVerified is handled by the database default (false)
+    };
+    
     const [user] = await db
       .insert(users)
-      .values({
-        ...userData,
-        isVerified: "false",
-        role: "user",
-        deleted: false
-      })
+      .values(userDataWithDefaults)
       .returning();
     return user;
   }
@@ -156,7 +159,7 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(users)
       .set({ 
-        isVerified: "true", 
+        isVerified: true, 
         verificationToken: null 
       })
       .where(eq(users.id, userId));
