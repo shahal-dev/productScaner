@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, ResponsiveContainer } from 'recharts';
 
 // Constants for data mapping
 const GENERATION_LABELS = {
@@ -17,12 +18,6 @@ const EDUCATION_LABELS = {
   1: "High",
   2: "Middle",
   3: "Low"
-};
-
-const LOCATION_LABELS = {
-  1: "Regional Center",
-  2: "City/Rural City",
-  3: "Rural Area"
 };
 
 interface GGSEvent {
@@ -46,6 +41,32 @@ interface GGSData {
   };
 }
 
+function processGenerationData(events: GGSEvent[]) {
+  const generationCounts = Array(6).fill(0);
+  events.forEach(event => {
+    if (event.generations >= 1 && event.generations <= 6) {
+      generationCounts[event.generations - 1]++;
+    }
+  });
+  return Object.entries(GENERATION_LABELS).map(([key, label]) => ({
+    name: label,
+    count: generationCounts[Number(key) - 1]
+  }));
+}
+
+function processEducationData(events: GGSEvent[]) {
+  const educationCounts = Array(3).fill(0);
+  events.forEach(event => {
+    if (event.eduLevel >= 1 && event.eduLevel <= 3) {
+      educationCounts[event.eduLevel - 1]++;
+    }
+  });
+  return Object.entries(EDUCATION_LABELS).map(([key, label]) => ({
+    name: label,
+    count: educationCounts[Number(key) - 1]
+  }));
+}
+
 export default function GGSVisualization() {
   const { data, isLoading, refetch } = useQuery<GGSData>({
     queryKey: ['/api/statuses']
@@ -54,7 +75,7 @@ export default function GGSVisualization() {
   const importData = async () => {
     try {
       await fetch('/api/ggs/import', { method: 'POST' });
-      refetch(); // Refresh the data after import
+      refetch();
     } catch (error) {
       console.error('Failed to import data:', error);
     }
@@ -69,6 +90,11 @@ export default function GGSVisualization() {
   }
 
   const { genderStats = { male: 0, female: 0 }, eventsByGender = { male: [], female: [] } } = data || {};
+
+  const maleGenerationData = processGenerationData(eventsByGender.male);
+  const femaleGenerationData = processGenerationData(eventsByGender.female);
+  const maleEducationData = processEducationData(eventsByGender.male);
+  const femaleEducationData = processEducationData(eventsByGender.female);
 
   return (
     <div className="container py-8">
@@ -97,66 +123,63 @@ export default function GGSVisualization() {
           </CardContent>
         </Card>
 
-        {/* Events Analysis Cards */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Male Events */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Men's Demographics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {eventsByGender.male.map((event: GGSEvent) => (
-                  <div key={event.id} className="p-4 bg-blue-50 rounded-lg">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-sm text-gray-500">Generation</p>
-                        <p className="font-medium">{GENERATION_LABELS[event.generations] || event.generations}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Education</p>
-                        <p className="font-medium">{EDUCATION_LABELS[event.eduLevel] || event.eduLevel}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Age</p>
-                        <p className="font-medium">{event.age} years</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        {/* Generation Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Generation Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    data={maleGenerationData}
+                    type="monotone"
+                    dataKey="count"
+                    name="Men"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                  />
+                  <Line
+                    data={femaleGenerationData}
+                    type="monotone"
+                    dataKey="count"
+                    name="Women"
+                    stroke="#ec4899"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Female Events */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Women's Demographics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {eventsByGender.female.map((event: GGSEvent) => (
-                  <div key={event.id} className="p-4 bg-pink-50 rounded-lg">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <p className="text-sm text-gray-500">Generation</p>
-                        <p className="font-medium">{GENERATION_LABELS[event.generations] || event.generations}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Education</p>
-                        <p className="font-medium">{EDUCATION_LABELS[event.eduLevel] || event.eduLevel}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Age</p>
-                        <p className="font-medium">{event.age} years</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Education Level Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Education Level Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart width={500} height={300} data={maleEducationData.concat(femaleEducationData)}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="count" name="Men" fill="#3b82f6" stackId="a" />
+                  <Bar dataKey="count" name="Women" fill="#ec4899" stackId="a" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
