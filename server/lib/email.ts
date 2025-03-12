@@ -1,5 +1,8 @@
 import nodemailer from "nodemailer";
 import { randomBytes } from "crypto";
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 let transporter: nodemailer.Transporter;
 
