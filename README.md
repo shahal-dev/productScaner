@@ -92,4 +92,4 @@ docker-compose exec app npm run db:push
 
 ## License
 
-MIT
+MIT# productScaner
