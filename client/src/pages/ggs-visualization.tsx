@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, ResponsiveContainer } from 'recharts';
+import Papa from 'papaparse';
 
 // Constants for data mapping
 const GENERATION_LABELS = {
@@ -20,66 +20,124 @@ const EDUCATION_LABELS = {
   3: "Low"
 };
 
-interface GGSEvent {
-  id: number;
-  originalId: number;
-  sex: number;
-  generations: number;
-  eduLevel: number;
-  age: number;
-  eventData: Record<string, string>;
+interface GGSRecord {
+  ID: string;
+  sex: string;
+  generations: string;
+  edu_level: string;
+  age: string;
+  [key: string]: string;
 }
 
-interface GGSData {
+interface ProcessedData {
   genderStats: {
     male: number;
     female: number;
   };
-  eventsByGender: {
-    male: GGSEvent[];
-    female: GGSEvent[];
+  generationData: {
+    male: { name: string; count: number }[];
+    female: { name: string; count: number }[];
   };
-}
-
-function processGenerationData(events: GGSEvent[]) {
-  const generationCounts = Array(6).fill(0);
-  events.forEach(event => {
-    if (event.generations >= 1 && event.generations <= 6) {
-      generationCounts[event.generations - 1]++;
-    }
-  });
-  return Object.entries(GENERATION_LABELS).map(([key, label]) => ({
-    name: label,
-    count: generationCounts[Number(key) - 1]
-  }));
-}
-
-function processEducationData(events: GGSEvent[]) {
-  const educationCounts = Array(3).fill(0);
-  events.forEach(event => {
-    if (event.eduLevel >= 1 && event.eduLevel <= 3) {
-      educationCounts[event.eduLevel - 1]++;
-    }
-  });
-  return Object.entries(EDUCATION_LABELS).map(([key, label]) => ({
-    name: label,
-    count: educationCounts[Number(key) - 1]
-  }));
+  educationData: {
+    male: { name: string; count: number }[];
+    female: { name: string; count: number }[];
+  };
 }
 
 export default function GGSVisualization() {
-  const { data, isLoading, refetch } = useQuery<GGSData>({
-    queryKey: ['/api/statuses']
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<ProcessedData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const importData = async () => {
-    try {
-      await fetch('/api/ggs/import', { method: 'POST' });
-      refetch();
-    } catch (error) {
-      console.error('Failed to import data:', error);
-    }
-  };
+  useEffect(() => {
+    const processCSVData = (records: GGSRecord[]) => {
+      const genderStats = { male: 0, female: 0 };
+      const maleGenerations = Array(6).fill(0);
+      const femaleGenerations = Array(6).fill(0);
+      const maleEducation = Array(3).fill(0);
+      const femaleEducation = Array(3).fill(0);
+
+      records.forEach(record => {
+        const sex = parseInt(record.sex);
+        const generation = parseInt(record.generations);
+        const education = parseInt(record.edu_level);
+
+        // Process gender stats
+        if (sex === 1) genderStats.male++;
+        if (sex === 2) genderStats.female++;
+
+        // Process generation data
+        if (sex === 1 && generation >= 1 && generation <= 6) {
+          maleGenerations[generation - 1]++;
+        }
+        if (sex === 2 && generation >= 1 && generation <= 6) {
+          femaleGenerations[generation - 1]++;
+        }
+
+        // Process education data
+        if (sex === 1 && education >= 1 && education <= 3) {
+          maleEducation[education - 1]++;
+        }
+        if (sex === 2 && education >= 1 && education <= 3) {
+          femaleEducation[education - 1]++;
+        }
+      });
+
+      const processedData: ProcessedData = {
+        genderStats,
+        generationData: {
+          male: Object.entries(GENERATION_LABELS).map(([key, label]) => ({
+            name: label,
+            count: maleGenerations[parseInt(key) - 1]
+          })),
+          female: Object.entries(GENERATION_LABELS).map(([key, label]) => ({
+            name: label,
+            count: femaleGenerations[parseInt(key) - 1]
+          }))
+        },
+        educationData: {
+          male: Object.entries(EDUCATION_LABELS).map(([key, label]) => ({
+            name: label,
+            count: maleEducation[parseInt(key) - 1]
+          })),
+          female: Object.entries(EDUCATION_LABELS).map(([key, label]) => ({
+            name: label,
+            count: femaleEducation[parseInt(key) - 1]
+          }))
+        }
+      };
+
+      return processedData;
+    };
+
+    const loadCSVData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('/GGS_new.csv');
+        const csvText = await response.text();
+
+        Papa.parse(csvText, {
+          header: true,
+          complete: (results) => {
+            const processedData = processCSVData(results.data as GGSRecord[]);
+            setData(processedData);
+            setIsLoading(false);
+          },
+          error: (error) => {
+            console.error('Error parsing CSV:', error);
+            setError('Failed to parse CSV data');
+            setIsLoading(false);
+          }
+        });
+      } catch (error) {
+        console.error('Error loading CSV:', error);
+        setError('Failed to load CSV data');
+        setIsLoading(false);
+      }
+    };
+
+    loadCSVData();
+  }, []);
 
   if (isLoading) {
     return (
@@ -89,19 +147,19 @@ export default function GGSVisualization() {
     );
   }
 
-  const { genderStats = { male: 0, female: 0 }, eventsByGender = { male: [], female: [] } } = data || {};
-
-  const maleGenerationData = processGenerationData(eventsByGender.male);
-  const femaleGenerationData = processGenerationData(eventsByGender.female);
-  const maleEducationData = processEducationData(eventsByGender.male);
-  const femaleEducationData = processEducationData(eventsByGender.female);
+  if (error || !data) {
+    return (
+      <div className="container py-8">
+        <div className="text-center text-red-500">
+          {error || 'Failed to load data'}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">GGS Data Analysis</h1>
-        <Button onClick={importData}>Import GGS Data</Button>
-      </div>
+      <h1 className="text-3xl font-bold mb-8">GGS Data Analysis</h1>
 
       <div className="grid gap-6">
         {/* Gender Distribution Card */}
@@ -113,11 +171,11 @@ export default function GGSVisualization() {
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="p-4 rounded-lg bg-blue-100">
                 <h3 className="text-lg font-semibold text-blue-700">Men</h3>
-                <p className="text-2xl font-bold text-blue-900">{genderStats.male}</p>
+                <p className="text-2xl font-bold text-blue-900">{data.genderStats.male}</p>
               </div>
               <div className="p-4 rounded-lg bg-pink-100">
                 <h3 className="text-lg font-semibold text-pink-700">Women</h3>
-                <p className="text-2xl font-bold text-pink-900">{genderStats.female}</p>
+                <p className="text-2xl font-bold text-pink-900">{data.genderStats.female}</p>
               </div>
             </div>
           </CardContent>
@@ -138,7 +196,7 @@ export default function GGSVisualization() {
                   <Tooltip />
                   <Legend />
                   <Line
-                    data={maleGenerationData}
+                    data={data.generationData.male}
                     type="monotone"
                     dataKey="count"
                     name="Men"
@@ -146,7 +204,7 @@ export default function GGSVisualization() {
                     strokeWidth={2}
                   />
                   <Line
-                    data={femaleGenerationData}
+                    data={data.generationData.female}
                     type="monotone"
                     dataKey="count"
                     name="Women"
@@ -167,7 +225,7 @@ export default function GGSVisualization() {
           <CardContent>
             <div className="h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart width={500} height={300} data={maleEducationData.concat(femaleEducationData)}>
+                <BarChart data={[...data.educationData.male, ...data.educationData.female]}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
