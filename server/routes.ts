@@ -173,14 +173,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ggs/import", async (req, res) => {
     try {
       console.log('Starting CSV import process...');
-      const csvPath = path.join(process.cwd(), "attached_assets", "GGS_new.csv");
+      const csvPath = path.join(process.cwd(), "GGS_new.csv");
+      console.log('Looking for CSV file at:', csvPath);
+      console.log('File exists:', fs.existsSync(csvPath));
+
       const fileContent = await fs.promises.readFile(csvPath, 'utf-8');
       console.log('CSV file read successfully');
 
       parse(fileContent, {
         columns: true,
         skip_empty_lines: true,
-        trim: true
+        trim: true,
+        cast: true
       }, async (err: CsvError | undefined, records: Record<string, any>[]) => {
         if (err) {
           console.error('CSV parsing error:', err);
@@ -188,39 +192,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         console.log(`Processing ${records.length} records...`);
+        console.log('Sample record:', records[0]);
 
-        for (const record of records) {
-          const eventData: Record<string, string> = {};
-          // Extract a15.1 to a34.12 columns into eventData
-          for (let i = 15; i <= 34; i++) {
-            for (let j = 1; j <= 12; j++) {
-              const key = `a${i}.${j}`;
-              if (record[key]) {
-                eventData[key] = record[key];
+        try {
+          // Clear existing data first
+          await storage.clearGGSData();
+
+          for (const record of records) {
+            const eventData: Record<string, string> = {};
+            // Extract a15.1 to a34.12 columns into eventData
+            for (let i = 15; i <= 34; i++) {
+              for (let j = 1; j <= 12; j++) {
+                const key = `a${i}.${j}`;
+                if (record[key]) {
+                  eventData[key] = record[key];
+                }
               }
+            }
+
+            try {
+              await storage.createGGSData({
+                originalId: parseInt(record.ID || '0'),
+                sex: parseInt(record.sex || '0'),
+                generations: parseInt(record.generations || '0'),
+                eduLevel: parseInt(record.edu_level || '0'),
+                age: parseInt(record.age || '0'),
+                eventData
+              });
+            } catch (e) {
+              console.error('Error processing record:', record, e);
             }
           }
 
-          try {
-            await storage.createGGSData({
-              originalId: parseInt(record.ID || '0'),
-              sex: parseInt(record.sex || '0'),
-              generations: parseInt(record.generations || '0'),
-              eduLevel: parseInt(record.edu_level || '0'),
-              age: parseInt(record.age || '0'),
-              eventData
-            });
-          } catch (e) {
-            console.error('Error processing record:', record, e);
-          }
+          console.log('CSV import completed successfully');
+          res.json({ 
+            success: true,
+            message: "CSV data imported successfully",
+            recordCount: records.length
+          });
+        } catch (error) {
+          console.error('Error during bulk insert:', error);
+          res.status(500).json({ 
+            success: false,
+            message: "Failed to import CSV data",
+            error: error.message
+          });
         }
-
-        console.log('CSV import completed');
-        res.json({ message: "CSV data imported successfully" });
       });
     } catch (error) {
       console.error('Error importing CSV:', error);
-      res.status(500).json({ message: "Failed to import CSV data" });
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to import CSV data",
+        error: error.message
+      });
     }
   });
 
