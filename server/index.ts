@@ -19,12 +19,10 @@ if (fs.existsSync(envPath)) {
     process.env[key] = envConfig[key];
   });
   console.log("Environment variables loaded directly from .env file");
-  console.log("SESSION_SECRET available after direct loading:", !!process.env.SESSION_SECRET);
-} else {
-  // Fallback to standard dotenv loading
-  dotenv.config();
-  console.log("Tried standard dotenv loading");
 }
+
+// Fallback to standard dotenv loading
+dotenv.config();
 
 // Hard-code SESSION_SECRET if not available (for development only)
 if (!process.env.SESSION_SECRET) {
@@ -35,6 +33,15 @@ if (!process.env.SESSION_SECRET) {
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+
+// Add health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy',
+    time: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -76,7 +83,7 @@ import { initEmailTransport } from "./lib/email";
 (async () => {
   // Initialize email transport
   await initEmailTransport();
-  
+
   // Setup authentication before registering routes
   setupAuth(app);
 
@@ -85,9 +92,8 @@ import { initEmailTransport } from "./lib/email";
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
+    console.error('Server Error:', err);
     res.status(status).json({ message });
-    throw err;
   });
 
   if (app.get("env") === "development") {
@@ -96,12 +102,14 @@ import { initEmailTransport } from "./lib/email";
     serveStatic(app);
   }
 
-  const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
+  // Use port 5000 consistently as specified in .replit
+  const port = 5000;
   server.listen({
     port,
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`Server is running on port ${port}`);
+    log(`Health check available at http://localhost:${port}/api/health`);
   });
 })();
