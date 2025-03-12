@@ -4,12 +4,6 @@ import { Loader2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import Papa from 'papaparse';
 
-interface GGSData {
-  sex: number;
-  age: number;
-  edu_level: number;
-}
-
 export default function GGSVisualization() {
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<{
@@ -22,19 +16,25 @@ export default function GGSVisualization() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        console.log('Fetching CSV data...');
+        console.log('Starting CSV data fetch...');
+
         const response = await fetch('/GGS_new.csv');
+        console.log('Fetch response status:', response.status);
+
         if (!response.ok) {
           throw new Error(`Failed to fetch CSV: ${response.statusText}`);
         }
 
         const csvText = await response.text();
-        console.log('CSV data fetched, parsing...');
+        console.log('CSV text length:', csvText.length);
+        console.log('First 100 characters:', csvText.substring(0, 100));
 
         Papa.parse(csvText, {
           header: true,
+          skipEmptyLines: true,
           complete: (results) => {
-            console.log('Parsing complete, sample data:', results.data[0]);
+            console.log('Parse complete. Total rows:', results.data.length);
+            console.log('Sample row:', results.data[0]);
 
             // Count gender distribution
             const genderCounts = { male: 0, female: 0 };
@@ -95,8 +95,9 @@ export default function GGSVisualization() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="container mx-auto p-4 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+        <p className="mt-2">Loading GGS data...</p>
       </div>
     );
   }
@@ -151,7 +152,7 @@ export default function GGSVisualization() {
           <CardTitle>Education Level Distribution by Gender</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[400px]">
+          <div className="h-[400px] w-full">
             <BarChart
               width={800}
               height={400}

@@ -34,6 +34,10 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
+// Serve static files from public directory
+app.use(express.static('public'));
+console.log("Serving static files from public directory");
+
 // Add health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -78,10 +82,9 @@ app.use((req, res, next) => {
   next();
 });
 
-import { initEmailTransport } from "./lib/email";
-
 (async () => {
   // Initialize email transport
+  const { initEmailTransport } = await import("./lib/email");
   await initEmailTransport();
 
   // Setup authentication before registering routes
